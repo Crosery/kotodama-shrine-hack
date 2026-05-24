@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>场景画线标注器</title>
+<style>
+  :root {
+    --bg: #12081f;
+    --panel: #1b0a2a;
+    --line: rgba(247,244,232,0.18);
+    --ink: rgba(247,244,232,0.92);
+    --mute: rgba(247,244,232,0.55);
+    --cyan: #2ee6e6;
+    --red: #ff5050;
+    --orange: #ffa040;
+    --gold: #ffe066;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: ui-monospace, "Cascadia Mono", "PingFang SC", "Microsoft YaHei", monospace; }
+  body { display: flex; flex-direction: column; min-height: 100dvh; }
+
+  header { position: sticky; top: 0; z-index: 10; background: rgba(18,8,31,0.96); border-bottom: 1px solid var(--line); padding: 8px 12px; }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
+  .bar strong { letter-spacing: 0.18em; margin-right: 6px; }
+  .bar .sep { color: var(--mute); margin: 0 4px; }
+  .info-row { margin-top: 4px; font-size: 12px; color: var(--mute); display: flex; flex-wrap: wrap; gap: 12px; }
+  .info-row b { color: var(--gold); font-weight: normal; }
+  .info-row code { color: var(--cyan); background: rgba(46,230,230,0.08); padding: 1px 6px; border-radius: 2px; }
+
+  button, label.btn, a.btn { display: inline-block; padding: 4px 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 2px; font-size: 12px; cursor: pointer; font-family: inherit; text-decoration: none; }
+  button:hover, label.btn:hover, a.btn:hover { border-color: rgba(46,230,230,0.5); color: var(--cyan); }
+  button[disabled] { opacity: 0.35; cursor: not-allowed; }
+  button.active { border-color: rgba(46,230,230,0.7); background: rgba(46,230,230,0.12); color: var(--cyan); }
+  button.danger { color: var(--red); border-color: rgba(255,80,80,0.4); }
+  input[type=range] { width: 110px; }
+  input[type=file] { display: none; }
+  .mode-obstacle { border-left: 4px solid var(--red); }
+  .mode-overlap { border-left: 4px solid var(--orange); }
+
+  main { flex: 1; display: flex; justify-content: center; align-items: flex-start; padding: 12px; overflow: auto; }
+  #stage-wrap { position: relative; background: #000; border: 1px solid var(--line); cursor: crosshair; }
+  #stage-wrap.no-image { display: flex; align-items: center; justify-content: center; min-height: 300px; min-width: 500px; padding: 24px; }
+  #stage-wrap.drag-over { outline: 3px dashed var(--cyan); outline-offset: -3px; }
+  #empty-hint { color: var(--mute); font-size: 14px; text-align: center; line-height: 1.7; margin: 0; }
+  #stage-wrap:not(.no-image) #empty-hint { display: none; }
+  canvas { display: block; image-rendering: pixelated; touch-action: none; }
+
+  footer { background: rgba(18,8,31,0.94); border-top: 1px solid var(--line); padding: 6px 12px; font-size: 11px; color: var(--mute); line-height: 1.7; }
+  footer kbd { background: var(--panel); border: 1px solid var(--line); padding: 1px 5px; border-radius: 2px; font-family: inherit; font-size: 10px; color: var(--ink); }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar" id="toolbar">
+    <strong>场景画线</strong>
+    <button id="btn-obstacle" class="active mode-obstacle">障碍线 (1) <span id="cnt-obstacle">0</span></button>
+    <button id="btn-overlap" class="mode-overlap">重叠线 (2) <span id="cnt-overlap">0</span></button>
+    <span class="sep">|</span>
+    <button id="btn-undo">撤销 (<span id="cnt-undo">0</span>)</button>
+    <button id="btn-redo">重做 (<span id="cnt-redo">0</span>)</button>
+    <button id="btn-clear-layer">清当前层</button>
+    <button id="btn-clear-all" class="danger">清全部</button>
+    <span class="sep">|</span>
+    <label>画笔 <input type="range" id="brush" min="4" max="40" step="2" value="14" /> <span id="brush-val">14</span>px</label>
+    <label>缩放 <input type="range" id="zoom" min="0.5" max="3" step="0.05" value="1" /> <span id="zoom-val">1.00</span>x</label>
+    <span class="sep">|</span>
+    <label class="btn" for="file-image">选背景图</label>
+    <input type="file" id="file-image" accept="image/*" />
+    <button id="btn-default-bg">载默认背景</button>
+    <span class="sep">|</span>
+    <button id="btn-save">下载 JSON</button>
+    <button id="btn-write-ls">写入游戏 localStorage</button>
+    <label class="btn" for="file-json">导入 JSON</label>
+    <input type="file" id="file-json" accept="application/json,.json" />
+  </div>
+  <div class="info-row">
+    <span>原图：<b id="img-size">未加载</b>（1:1 原图坐标）</span>
+    <span>鼠标：<b id="mouse-pos">(-, -)</b></span>
+    <span>草稿点数：<b id="draft-count">0</b></span>
+    <span>保存：<code id="save-where">浏览器 localStorage['painter-draft.v1']（自动）</code></span>
+  </div>
+</header>
+
+<main>
+  <div id="stage-wrap" class="no-image">
+    <p id="empty-hint">将背景图拖到此处，或点击「选背景图」/「载默认背景」<br>（同 vite 端口下访问时自动加载 /kotodama_bg.png）</p>
+    <canvas id="cv" style="display:none"></canvas>
+  </div>
+</main>
+
+<footer>
+  快捷键：<kbd>1</kbd>/<kbd>2</kbd> 切层 · <kbd>[</kbd>/<kbd>]</kbd> 画笔粗细 · <kbd>Cmd/Ctrl+Z</kbd> 撤销 · <kbd>Cmd/Ctrl+Shift+Z</kbd> 重做 · <kbd>S</kbd> 下载 JSON · <kbd>L</kbd> 写入游戏 localStorage · 左键拖动 = 画自由曲线 · 起点旁红/橙圆点 = 删除该条线
+  <br>
+  数据格式：<code>{ "obstacle": [[[x,y],…],…], "overlap": [[[x,y],…],…] }</code> · 写入游戏 localStorage 后回到游戏页按 F5 立即生效 · 仅在同源访问（同 host:port）时可写
+</footer>
+
+<script>
+(() => {
+  const GAME_KEY = 'painter.v1';
+  const DRAFT_KEY = 'painter-draft.v1';
+  const HISTORY_LIMIT = 200;
+  const SAMPLE_MIN_DIST2 = 4;
+
+  const stageWrap = document.getElementById('stage-wrap');
+  const canvas = document.getElementById('cv');
+  const ctx = canvas.getContext('2d');
+  const btnObstacle = document.getElementById('btn-obstacle');
+  const btnOverlap = document.getElementById('btn-overlap');
+  const btnUndo = document.getElementById('btn-undo');
+  const btnRedo = document.getElementById('btn-redo');
+  const btnClearLayer = document.getElementById('btn-clear-layer');
+  const btnClearAll = document.getElementById('btn-clear-all');
+  const btnSave = document.getElementById('btn-save');
+  const btnWriteLS = document.getElementById('btn-write-ls');
+  const btnDefaultBg = document.getElementById('btn-default-bg');
+  const brushInput = document.getElementById('brush');
+  const brushVal = document.getElementById('brush-val');
+  const zoomInput = document.getElementById('zoom');
+  const zoomVal = document.getElementById('zoom-val');
+  const fileImage = document.getElementById('file-image');
+  const fileJson = document.getElementById('file-json');
+  const imgSize = document.getElementById('img-size');
+  const mousePos = document.getElementById('mouse-pos');
+  const draftCountEl = document.getElementById('draft-count');
+  const saveWhere = document.getElementById('save-where');
+  const cntObstacle = document.getElementById('cnt-obstacle');
+  const cntOverlap = document.getElementById('cnt-overlap');
+  const cntUndo = document.getElementById('cnt-undo');
+  const cntRedo = document.getElementById('cnt-redo');
+
+  let bgImage = null;
+  let imgW = 0, imgH = 0;
+  let baseScale = 0.5;
+  let zoom = 1;
+  let mode = 'obstacle';
+  let brush = 14;
+  let strokes = { obstacle: [], overlap: [] };
+  let history = [];
+  let future = [];
+  let drawing = false;
+  let draft = [];
+
+  function snapshot() {
+    return { obstacle: strokes.obstacle.map(s => s.slice()), overlap: strokes.overlap.map(s => s.slice()) };
+  }
+  function pushHistory() {
+    history.push(snapshot());
+    if (history.length > HISTORY_LIMIT) history.shift();
+    future = [];
+    refreshCounts();
+  }
+  function undo() {
+    if (history.length === 0) return;
+    future.push(snapshot());
+    strokes = history.pop();
+    persistDraft();
+    refreshCounts();
+    render();
+  }
+  function redo() {
+    if (future.length === 0) return;
+    history.push(snapshot());
+    strokes = future.pop();
+    persistDraft();
+    refreshCounts();
+    render();
+  }
+  function refreshCounts() {
+    cntObstacle.textContent = strokes.obstacle.length;
+    cntOverlap.textContent = strokes.overlap.length;
+    cntUndo.textContent = history.length;
+    cntRedo.textContent = future.length;
+    btnUndo.disabled = history.length === 0;
+    btnRedo.disabled = future.length === 0;
+  }
+
+  function setMode(m) {
+    mode = m;
+    btnObstacle.classList.toggle('active', m === 'obstacle');
+    btnOverlap.classList.toggle('active', m === 'overlap');
+  }
+
+  function fitBaseScale() {
+    const avail = Math.max(640, window.innerWidth - 32);
+    baseScale = Math.min(1.0, Math.max(0.15, avail / imgW));
+  }
+  function curScale() { return baseScale * zoom; }
+
+  function resizeCanvas() {
+    if (!bgImage) return;
+    const s = curScale();
+    canvas.width = imgW;
+    canvas.height = imgH;
+    canvas.style.width = (imgW * s) + 'px';
+    canvas.style.height = (imgH * s) + 'px';
+    render();
+  }
+
+  function render() {
+    if (!bgImage) return;
+    ctx.clearRect(0, 0, imgW, imgH);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(bgImage, 0, 0);
+
+    // overlap: 半透明填充 + 描边
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    for (const s of strokes.overlap) {
+      if (s.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(s[0][0], s[0][1]);
+      for (let i = 1; i < s.length; i++) ctx.lineTo(s[i][0], s[i][1]);
+      if (s.length >= 3) ctx.closePath();
+      ctx.fillStyle = 'rgba(255,160,64,0.20)';
+      if (s.length >= 3) ctx.fill();
+      ctx.strokeStyle = 'rgba(255,160,64,0.95)';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    }
+    // obstacle: 粗线
+    for (const s of strokes.obstacle) {
+      if (s.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(s[0][0], s[0][1]);
+      for (let i = 1; i < s.length; i++) ctx.lineTo(s[i][0], s[i][1]);
+      ctx.strokeStyle = 'rgba(255,80,80,0.95)';
+      ctx.lineWidth = brush;
+      ctx.stroke();
+    }
+    // draft: 当前模式色 + 起点小圆指示
+    if (draft.length >= 1) {
+      const color = mode === 'obstacle' ? 'rgba(255,80,80,0.95)' : 'rgba(255,160,64,0.95)';
+      if (draft.length >= 2) {
+        ctx.beginPath();
+        ctx.moveTo(draft[0][0], draft[0][1]);
+        for (let i = 1; i < draft.length; i++) ctx.lineTo(draft[i][0], draft[i][1]);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = mode === 'obstacle' ? brush : 4;
+        ctx.stroke();
+      }
+      const [hx, hy] = draft[draft.length - 1];
+      ctx.beginPath();
+      ctx.arc(hx, hy, Math.max(4, brush / 2 + 2), 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+    // 删除按钮（每条线起点的小圆，渲染到 DOM 不在 canvas）
+    renderDeleteHandles();
+  }
+
+  let handleContainer = null;
+  function ensureHandleContainer() {
+    if (handleContainer) return handleContainer;
+    handleContainer = document.createElement('div');
+    handleContainer.style.position = 'absolute';
+    handleContainer.style.inset = '0';
+    handleContainer.style.pointerEvents = 'none';
+    stageWrap.appendChild(handleContainer);
+    return handleContainer;
+  }
+  function renderDeleteHandles() {
+    const wrap = ensureHandleContainer();
+    wrap.innerHTML = '';
+    const s = curScale();
+    const make = (layer, idx, color) => {
+      const stroke = strokes[layer][idx];
+      if (!stroke || stroke.length === 0) return;
+      const [sx, sy] = stroke[0];
+      const btn = document.createElement('button');
+      btn.textContent = '×';
+      Object.assign(btn.style, {
+        position: 'absolute',
+        left: (sx * s - 9) + 'px',
+        top: (sy * s - 22) + 'px',
+        width: '18px', height: '18px', borderRadius: '50%',
+        background: color, color: 'white',
+        border: '1px solid white', cursor: 'pointer',
+        fontSize: '11px', padding: 0,
+        pointerEvents: 'auto',
+      });
+      btn.title = `删除此 ${layer === 'obstacle' ? '障碍线' : '重叠线'} (${stroke.length} 点)`;
+      btn.onmousedown = (e) => e.stopPropagation();
+      btn.onpointerdown = (e) => e.stopPropagation();
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        pushHistory();
+        strokes[layer].splice(idx, 1);
+        persistDraft();
+        refreshCounts();
+        render();
+      };
+      wrap.appendChild(btn);
+    };
+    strokes.obstacle.forEach((_, i) => make('obstacle', i, 'rgba(255,80,80,0.9)'));
+    strokes.overlap.forEach((_, i) => make('overlap', i, 'rgba(255,160,64,0.9)'));
+  }
+
+  function eventToScene(ev) {
+    const rect = canvas.getBoundingClientRect();
+    const s = curScale();
+    const x = Math.round((ev.clientX - rect.left) / s);
+    const y = Math.round((ev.clientY - rect.top) / s);
+    return [Math.max(0, Math.min(imgW - 1, x)), Math.max(0, Math.min(imgH - 1, y))];
+  }
+
+  canvas.addEventListener('pointerdown', (ev) => {
+    if (!bgImage || ev.button !== 0) return;
+    canvas.setPointerCapture(ev.pointerId);
+    drawing = true;
+    draft = [eventToScene(ev)];
+    draftCountEl.textContent = draft.length;
+    render();
+  });
+  canvas.addEventListener('pointermove', (ev) => {
+    if (!bgImage) return;
+    const p = eventToScene(ev);
+    mousePos.textContent = `(${p[0]}, ${p[1]})`;
+    if (!drawing) return;
+    const last = draft[draft.length - 1];
+    const dx = p[0] - last[0], dy = p[1] - last[1];
+    if (dx * dx + dy * dy >= SAMPLE_MIN_DIST2) {
+      draft.push(p);
+      draftCountEl.textContent = draft.length;
+      render();
+    }
+  });
+  function endDraw(ev) {
+    if (!drawing) return;
+    drawing = false;
+    try { canvas.releasePointerCapture(ev.pointerId); } catch {}
+    if (draft.length >= 2) {
+      pushHistory();
+      strokes[mode].push(draft);
+      persistDraft();
+      refreshCounts();
+    }
+    draft = [];
+    draftCountEl.textContent = 0;
+    render();
+  }
+  canvas.addEventListener('pointerup', endDraw);
+  canvas.addEventListener('pointercancel', endDraw);
+  canvas.addEventListener('pointerleave', (ev) => { if (drawing) endDraw(ev); });
+
+  // 拖拽图片到舞台
+  ['dragenter','dragover'].forEach(t => stageWrap.addEventListener(t, (e) => { e.preventDefault(); stageWrap.classList.add('drag-over'); }));
+  ['dragleave','drop'].forEach(t => stageWrap.addEventListener(t, (e) => { e.preventDefault(); stageWrap.classList.remove('drag-over'); }));
+  stageWrap.addEventListener('drop', (e) => {
+    const f = e.dataTransfer.files?.[0];
+    if (f && f.type.startsWith('image/')) loadImageFile(f);
+  });
+
+  fileImage.addEventListener('change', () => {
+    const f = fileImage.files?.[0];
+    if (f) loadImageFile(f);
+  });
+
+  function loadImageFile(file) {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      bgImage = img;
+      imgW = img.naturalWidth;
+      imgH = img.naturalHeight;
+      imgSize.innerHTML = `<b>${imgW}×${imgH}</b>`;
+      stageWrap.classList.remove('no-image');
+      canvas.style.display = 'block';
+      fitBaseScale();
+      resizeCanvas();
+    };
+    img.onerror = () => alert('图像加载失败');
+    img.src = url;
+  }
+
+  async function tryLoadDefault(silent = false) {
+    const candidates = ['/kotodama_bg.png', './kotodama_bg.png', '../../public/kotodama_bg.png'];
+    for (const url of candidates) {
+      try {
+        const r = await fetch(url);
+        if (!r.ok) continue;
+        const blob = await r.blob();
+        loadImageFile(new File([blob], 'kotodama_bg.png', { type: blob.type }));
+        return;
+      } catch {}
+    }
+    // file:// 双击 fetch 会被 CORS 拦截，用 Image 元素绕过（image 不受 CORS 限制加载）
+    const img = new Image();
+    await new Promise((resolve) => {
+      img.onload = () => {
+        bgImage = img;
+        imgW = img.naturalWidth;
+        imgH = img.naturalHeight;
+        imgSize.innerHTML = `<b>${imgW}×${imgH}</b>`;
+        stageWrap.classList.remove('no-image');
+        canvas.style.display = 'block';
+        fitBaseScale();
+        resizeCanvas();
+        resolve();
+      };
+      img.onerror = resolve;
+      img.src = './kotodama_bg.png';
+    });
+    if (!bgImage && !silent) {
+      alert('默认背景加载失败。请点「选背景图」或把 PNG 拖到画布上。');
+    }
+  }
+  btnDefaultBg.addEventListener('click', () => tryLoadDefault(false));
+
+  // 自动尝试（同源 / 同目录有图时直接成功；失败保持空白等用户选图）
+  tryLoadDefault(true);
+
+  // 按钮
+  btnObstacle.addEventListener('click', () => setMode('obstacle'));
+  btnOverlap.addEventListener('click', () => setMode('overlap'));
+  btnUndo.addEventListener('click', undo);
+  btnRedo.addEventListener('click', redo);
+  btnClearLayer.addEventListener('click', () => {
+    if (!confirm(`清空当前层「${mode === 'obstacle' ? '障碍线' : '重叠线'}」？`)) return;
+    pushHistory();
+    strokes[mode] = [];
+    persistDraft();
+    refreshCounts();
+    render();
+  });
+  btnClearAll.addEventListener('click', () => {
+    if (!confirm('清空全部线条？')) return;
+    pushHistory();
+    strokes = { obstacle: [], overlap: [] };
+    persistDraft();
+    refreshCounts();
+    render();
+  });
+
+  brushInput.addEventListener('input', () => {
+    brush = Number(brushInput.value);
+    brushVal.textContent = brush;
+    render();
+  });
+  zoomInput.addEventListener('input', () => {
+    zoom = Number(zoomInput.value);
+    zoomVal.textContent = zoom.toFixed(2);
+    resizeCanvas();
+  });
+  window.addEventListener('resize', () => { fitBaseScale(); resizeCanvas(); });
+
+  // 保存 / 加载
+  function downloadJson() {
+    const payload = { obstacle: strokes.obstacle, overlap: strokes.overlap };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    a.download = `painter-strokes-${ts}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+    flash('已下载 painter-strokes-*.json');
+  }
+  btnSave.addEventListener('click', downloadJson);
+
+  function writeGameLS() {
+    try {
+      const payload = { obstacle: strokes.obstacle, overlap: strokes.overlap };
+      localStorage.setItem(GAME_KEY, JSON.stringify(payload));
+      flash(`已写入 localStorage['${GAME_KEY}']（同源时游戏页 F5 即生效）`);
+    } catch (e) {
+      alert('写入失败：' + e);
+    }
+  }
+  btnWriteLS.addEventListener('click', writeGameLS);
+
+  fileJson.addEventListener('change', async () => {
+    const f = fileJson.files?.[0];
+    if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      pushHistory();
+      strokes = {
+        obstacle: Array.isArray(data.obstacle) ? data.obstacle : [],
+        overlap: Array.isArray(data.overlap) ? data.overlap : [],
+      };
+      persistDraft();
+      refreshCounts();
+      render();
+      flash(`已导入 ${strokes.obstacle.length + strokes.overlap.length} 条线`);
+    } catch (e) {
+      alert('JSON 解析失败：' + e);
+    }
+    fileJson.value = '';
+  });
+
+  function persistDraft() {
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(strokes)); } catch {}
+  }
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      strokes = {
+        obstacle: Array.isArray(data.obstacle) ? data.obstacle : [],
+        overlap: Array.isArray(data.overlap) ? data.overlap : [],
+      };
+      refreshCounts();
+    } catch {}
+  }
+  loadDraft();
+
+  // 状态闪烁
+  let flashTimer = null;
+  function flash(msg) {
+    const orig = saveWhere.innerHTML;
+    saveWhere.innerHTML = msg;
+    saveWhere.style.color = 'var(--cyan)';
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => {
+      saveWhere.innerHTML = `浏览器 localStorage['${DRAFT_KEY}']（自动）`;
+      saveWhere.style.color = '';
+    }, 3500);
+  }
+
+  // 快捷键
+  window.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT') return;
+    const meta = e.metaKey || e.ctrlKey;
+    if (meta && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+    if (meta && e.shiftKey && e.key.toLowerCase() === 'z') { e.preventDefault(); redo(); return; }
+    if (meta) return;
+    if (e.key === '1') setMode('obstacle');
+    else if (e.key === '2') setMode('overlap');
+    else if (e.key === '[') { brush = Math.max(2, brush - 2); brushInput.value = brush; brushVal.textContent = brush; render(); }
+    else if (e.key === ']') { brush = Math.min(40, brush + 2); brushInput.value = brush; brushVal.textContent = brush; render(); }
+    else if (e.key.toLowerCase() === 's') { e.preventDefault(); downloadJson(); }
+    else if (e.key.toLowerCase() === 'l') { e.preventDefault(); writeGameLS(); }
+  });
+
+  refreshCounts();
+})();
+</script>
+</body>
+</html>

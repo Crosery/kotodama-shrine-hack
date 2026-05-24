@@ -1,0 +1,74 @@
+{
+  "package": "miko-extended-package",
+  "source_reference": "../gen-output/miko-source-ref.png",
+  "supersedes": "miko-good-front-back-package",
+  "kept_states": [
+    "idle",
+    "walk-front",
+    "walk-back",
+    "walk-left",
+    "walk-right"
+  ],
+  "added_states": [
+    "idle",
+    "walk-left",
+    "walk-right"
+  ],
+  "carryover_states": [
+    "walk-front",
+    "walk-back"
+  ],
+  "cell_size": [192, 208],
+  "frames_per_state": 3,
+  "generation": {
+    "provider": "nanobanana (147ai bridge)",
+    "model": "gpt-image-2-high",
+    "aspect_ratio": "21:9",
+    "reference_image": "../gen-output/miko-source-ref.png",
+    "strips": {
+      "idle":       "../gen-output/miko-idle-strip-v2.png",
+      "walk-left":  "../gen-output/miko-walk-left-strip.png",
+      "walk-right": "../gen-output/miko-walk-right-strip.png"
+    }
+  },
+  "pipeline": [
+    "generate full row strip with gpt-image-2-high using source character as --ref",
+    "split strip into N equal slices (frame_count)",
+    "auto-detect chroma key from corner samples",
+    "remove green chroma + despill with squared-distance thresholds",
+    "drop tiny isolated components (anti-spec speckles)",
+    "trim to non-transparent bbox",
+    "fit into 192x208 cell, bottom-aligned center, safe margins"
+  ],
+  "files": [
+    "METHODOLOGY.md",
+    "frames/idle/01.png",
+    "frames/idle/02.png",
+    "frames/idle/03.png",
+    "frames/walk-front/01.png",
+    "frames/walk-front/02.png",
+    "frames/walk-front/03.png",
+    "frames/walk-back/01.png",
+    "frames/walk-back/02.png",
+    "frames/walk-back/03.png",
+    "frames/walk-left/01.png",
+    "frames/walk-left/02.png",
+    "frames/walk-left/03.png",
+    "frames/walk-right/01.png",
+    "frames/walk-right/02.png",
+    "frames/walk-right/03.png",
+    "gifs/miko_idle.gif",
+    "gifs/miko_walk-front.gif",
+    "gifs/miko_walk-back.gif",
+    "gifs/miko_walk-left.gif",
+    "gifs/miko_walk-right.gif",
+    "previews/miko_idle_preview.gif",
+    "previews/miko_walk-front_preview.gif",
+    "previews/miko_walk-back_preview.gif",
+    "previews/miko_walk-left_preview.gif",
+    "previews/miko_walk-right_preview.gif",
+    "previews/miko_all_states_preview.gif",
+    "contact_sheet.png",
+    "manifest.json"
+  ]
+}

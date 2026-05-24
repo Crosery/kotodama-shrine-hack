@@ -1,0 +1,26 @@
+[
+  {
+    "id": "warabe",
+    "x": 2969,
+    "y": 2072,
+    "talkRadius": 220
+  },
+  {
+    "id": "obaa-san",
+    "x": 1908,
+    "y": 1421,
+    "talkRadius": 220
+  },
+  {
+    "id": "shokunin",
+    "x": 648,
+    "y": 2095,
+    "talkRadius": 220
+  },
+  {
+    "id": "miko-shrine",
+    "x": 624,
+    "y": 1052,
+    "talkRadius": 220
+  }
+]

@@ -1,0 +1,39 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["image_width", "image_height", "regions"],
+  "properties": {
+    "image_width": { "type": "integer" },
+    "image_height": { "type": "integer" },
+    "regions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label_zh", "category", "bbox", "rpg_role", "interactable", "notes"],
+        "properties": {
+          "id": { "type": "string" },
+          "label_zh": { "type": "string" },
+          "category": {
+            "type": "string",
+            "enum": ["torii", "shrine_building", "lantern", "tree", "stairs", "path", "wall", "decor", "nature", "background", "interactable_point"]
+          },
+          "bbox": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["x", "y", "w", "h"],
+            "properties": {
+              "x": { "type": "integer" },
+              "y": { "type": "integer" },
+              "w": { "type": "integer" },
+              "h": { "type": "integer" }
+            }
+          },
+          "rpg_role": { "type": "string" },
+          "interactable": { "type": "boolean" },
+          "notes": { "type": "string" }
+        }
+      }
+    }
+  }
+}

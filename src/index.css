@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", "Noto Sans Mono", monospace;
+  line-height: 1.5;
+  font-weight: 400;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --k-bg-0: #12081f;
+  --k-bg-1: #1b0a2a;
+  --k-ink: #f7f4e8;
+  --k-mute: rgba(247, 244, 232, 0.72);
+  --k-line: rgba(247, 244, 232, 0.14);
+  --k-cyan: #2ee6e6;
+  --k-magenta: #ff2e9a;
+  --k-sakura: #f4a8c9;
+  --k-gold: #e8c760;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #07050d;
+  color: var(--k-ink);
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (pointer: coarse) {
+  html, body {
+    touch-action: none;  /* 触屏禁默认滚动/缩放手势 */
+  }
+}
+
+@layer components {
+  .k-pixel-panel {
+    background: linear-gradient(180deg, rgba(18, 8, 31, 0.86) 0%, rgba(18, 8, 31, 0.72) 100%);
+    border: 1px solid var(--k-line);
+    box-shadow: 0 0 0 1px rgba(46, 230, 230, 0.15), 0 0 34px rgba(46, 230, 230, 0.12), 0 0 90px rgba(255, 46, 154, 0.07);
+    clip-path: polygon(0 10px, 10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+
+  .k-pixel-bubble {
+    border: 1px solid rgba(247, 244, 232, 0.18);
+    clip-path: polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+
+  .k-grid-noise {
+    background-image:
+      linear-gradient(rgba(247, 244, 232, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(247, 244, 232, 0.04) 1px, transparent 1px),
+      radial-gradient(circle at 1px 1px, rgba(244, 168, 201, 0.16) 1px, transparent 1.4px);
+    background-size: 28px 28px, 28px 28px, 36px 36px;
+    opacity: 0.45;
+    mix-blend-mode: screen;
+  }
+
+  .k-title {
+    letter-spacing: 0.12em;
+    text-shadow: 0 0 18px rgba(46, 230, 230, 0.26), 0 0 44px rgba(255, 46, 154, 0.14);
+  }
+
+  .k-dot {
+    animation: kPulse 900ms ease-in-out infinite;
+  }
+}
+
+@keyframes kPulse {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes kBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* 干掉 WebKit / Chromium / X5 / UC 给 video 强行注入的所有原生控制条与按钮 */
+video::-webkit-media-controls,
+video::-webkit-media-controls-enclosure,
+video::-webkit-media-controls-panel,
+video::-webkit-media-controls-start-playback-button,
+video::-webkit-media-controls-play-button,
+video::-webkit-media-controls-timeline,
+video::-webkit-media-controls-current-time-display,
+video::-webkit-media-controls-time-remaining-display,
+video::-webkit-media-controls-mute-button,
+video::-webkit-media-controls-volume-slider,
+video::-webkit-media-controls-fullscreen-button,
+video::-webkit-media-controls-overlay-play-button {
+  display: none !important;
+  -webkit-appearance: none;
+  appearance: none;
+}

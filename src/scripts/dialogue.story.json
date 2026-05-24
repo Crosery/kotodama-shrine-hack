@@ -1,0 +1,98 @@
+{
+  "startId": "intro_0",
+  "nodes": {
+    "intro_0": {
+      "id": "intro_0",
+      "chapter": "永春 · 初次合掌",
+      "npcText": "神社的铃音轻轻一荡。童子抬眼看向你：\n“神大人…我可以，把一句话交给您吗？”",
+      "replies": [
+        { "id": "r0_1", "label": "请说。", "nextId": "intro_1" },
+        { "id": "r0_2", "label": "你是谁？", "emitText": "你是谁？", "nextId": "intro_1b" },
+        { "id": "r0_3", "label": "我在听。", "nextId": "intro_1" }
+      ]
+    },
+    "intro_1": {
+      "id": "intro_1",
+      "chapter": "永春 · 初次合掌",
+      "npcText": "“我想知道…如果我在这座小镇里走丢了，您会用什么词，把我带回去？”",
+      "replies": [
+        { "id": "r1_1", "label": "化作春风", "emitText": "化作春风", "nextId": "intro_2_wind" },
+        { "id": "r1_2", "label": "成为一朵樱花", "emitText": "成为一朵樱花", "nextId": "intro_2_sakura" },
+        { "id": "r1_3", "label": "忘记一切重新开始", "emitText": "忘记一切重新开始", "nextId": "intro_2_restart" }
+      ]
+    },
+    "intro_1b": {
+      "id": "intro_1b",
+      "chapter": "永春 · 初次合掌",
+      "npcText": "童子把手掌贴在胸口，像在确认自己的名字。\n“我叫若叶。替神社点灯，也替小镇记住今天。”",
+      "replies": [
+        { "id": "r1b_1", "label": "若叶，今天辛苦了。", "nextId": "intro_1" },
+        { "id": "r1b_2", "label": "把你想交给我的话说完。", "nextId": "intro_1" }
+      ]
+    },
+    "intro_2_wind": {
+      "id": "intro_2_wind",
+      "chapter": "言灵 · 风",
+      "npcText": "“春风…”童子重复了一遍，像把字含在舌尖。\n远处的灯笼光晕轻轻亮了一格。\n“那我就顺着风的方向走。走到您听得见的地方。”",
+      "replies": [
+        { "id": "r2w_1", "label": "去吧。", "nextId": "loop_0" },
+        { "id": "r2w_2", "label": "慢一点。", "nextId": "loop_0" }
+      ]
+    },
+    "intro_2_sakura": {
+      "id": "intro_2_sakura",
+      "chapter": "言灵 · 樱",
+      "npcText": "童子轻轻笑了：\n“樱花会落，但不会消失。\n我会把自己，落在每条回家的路上。”",
+      "replies": [
+        { "id": "r2s_1", "label": "把花瓣留给需要的人。", "nextId": "loop_0" },
+        { "id": "r2s_2", "label": "也留一片给我。", "nextId": "loop_0" }
+      ]
+    },
+    "intro_2_restart": {
+      "id": "intro_2_restart",
+      "chapter": "言灵 · 重来",
+      "npcText": "童子怔了一下，随即把额头贴得更低。\n“如果忘记是为了重新开始…那我会把今天的灯，重新点一次。”",
+      "replies": [
+        { "id": "r2r_1", "label": "记住你愿意点灯的手。", "nextId": "loop_0" },
+        { "id": "r2r_2", "label": "不必害怕。", "nextId": "loop_0" }
+      ]
+    },
+    "loop_0": {
+      "id": "loop_0",
+      "chapter": "永春 · 小镇回声",
+      "npcText": "若叶抬头看你，像在等待你下一句。\n“神大人，您还想听我说什么？”",
+      "replies": [
+        { "id": "rl_1", "label": "说说今天的小镇。", "nextId": "loop_town" },
+        { "id": "rl_2", "label": "给我一个新的祈愿。", "nextId": "loop_prayer" }
+      ],
+      "defaultNextId": "loop_free"
+    },
+    "loop_town": {
+      "id": "loop_town",
+      "chapter": "永春 · 小镇回声",
+      "npcText": "“今天的樱花很安静。”\n“街角的猫睡得很沉，像在听见您打字的声音。”",
+      "replies": [
+        { "id": "lt_1", "label": "继续。", "nextId": "loop_0" },
+        { "id": "lt_2", "label": "谢谢你。", "nextId": "loop_0" }
+      ]
+    },
+    "loop_prayer": {
+      "id": "loop_prayer",
+      "chapter": "永春 · 小镇回声",
+      "npcText": "若叶眨了眨眼：\n“那就…请您给一句话，让我把这盏灯点得更亮。”",
+      "replies": [
+        { "id": "lp_1", "label": "点到你自己也温暖。", "emitText": "点到你自己也温暖。", "nextId": "loop_0" },
+        { "id": "lp_2", "label": "让光照见每一个误会。", "emitText": "让光照见每一个误会。", "nextId": "loop_0" }
+      ]
+    },
+    "loop_free": {
+      "id": "loop_free",
+      "chapter": "永春 · 自由言灵",
+      "npcText": "童子静静听着。\n“我会把您刚才那句话，挂在绘马上。”",
+      "replies": [
+        { "id": "lf_1", "label": "再来一次。", "nextId": "loop_0" }
+      ]
+    }
+  }
+}
+
